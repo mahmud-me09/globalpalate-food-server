@@ -86,7 +86,7 @@ async function run() {
 		app.get("/foods/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
-			const food = foodsCollection.findOne(query);
+			const food = await foodsCollection.findOne(query);
 			res.send(food);
 		});
 
