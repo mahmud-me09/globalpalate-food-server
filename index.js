@@ -1,20 +1,18 @@
 const express = require("express");
-const { MongoClient, ServerApiVersion } = require("mongodb");
-require('dotenv').config()
-const cors = require("cors")
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+require("dotenv").config();
+const cors = require("cors");
 const app = express();
 const port = 3000;
 
-app.get("/", (req, res) => {
-	res.send("Hello World!");
-});
+app.use(express.json());
 
 app.use(
 	cors({
 		origin: [
 			"http://localhost:5173",
-			// "https://cardoctor-bd.web.app",
-			// "https://cardoctor-bd.firebaseapp.com",
+			"https://globalpalate-a11-client.firebaseapp.com",
+			"https://globalpalate-a11-client.web.app",
 		],
 		credentials: true,
 	})
@@ -46,6 +44,70 @@ async function run() {
 		console.log(
 			"Pinged your deployment. You successfully connected to MongoDB!"
 		);
+
+		const foodsCollection = client.db("globalpalate").collection("foods");
+		// const doc = { name: "Red", town: "kanto" };
+		// const result = await movies.insertOne(doc);
+		// console.log(
+		// 	`${result.insertedCount} documents were inserted with the _id: ${result.insertedId}`
+		// );
+
+		app.get("/foods", async (req, res) => {
+			try {
+				let query = {};
+				if (req.query?.email || req.query?.name) {
+					query = {
+						$and: [
+							req.query.email
+								? { "add_by.email": req.query.email }
+								: {},
+							req.query.name
+								? {
+										name: {
+											$regex: new RegExp(
+												req.query.name,
+												"i"
+											),
+										},
+								  }
+								: {},
+						],
+					};
+				}
+				const foods = await foodsCollection.find(query).toArray();
+				res.send(foods);
+
+			} catch (error) {
+				console.error("Error searching foods:", error);
+				res.status(500).json({ error: "Internal server error" });
+			}
+		});
+
+		app.get("/foods/:id", async (req, res) => {
+			const id = req.params.id;
+			const query = { _id: new ObjectId(id) };
+			const food = foodsCollection.findOne(query);
+			res.send(food);
+		});
+
+		app.post("/foods", async (req, res) => {
+			const food = req.body;
+			const result = await foodsCollection.insertOne(food);
+			res.send(result);
+		});
+
+		app.put("/foods/:id", async (req, res) => {
+			const id = req.params.id;
+			const query = { _id: new ObjectId(id) };
+			const updatedFoodData = { $set: req.body };
+			const option = { upsert: true };
+			const result = await foodsCollection.updateOne(
+				query,
+				updatedFoodData,
+				option
+			);
+			res.send(result);
+		});
 
 		// app.post("/jwt", async (req, res) => {
 		// 	const user = req.body;
