@@ -1,0 +1,1 @@
+Server Link: https://globalpalate-a11-server.vercel.app/
