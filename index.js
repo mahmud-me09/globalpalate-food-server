@@ -1,12 +1,30 @@
 const express = require("express");
 require("dotenv").config();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const app = express();
 const port = process.env.PORT || 5000;
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 app.use(express.json());
+app.use(cookieParser());
+
+const verifyToken = (req, res, next) => {
+	const token = req?.cookies?.token;
+	if (!token) return res.status(401).send({ message: "unauthorized access" });
+	if (token) {
+		jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
+			if (error) {
+				console.log(error);
+			}
+			console.log(decoded);
+			req.user = decoded;
+			next();
+		});
+	}
+};
 
 app.use(
 	cors({
@@ -16,6 +34,7 @@ app.use(
 			"https://globalpalate-a11-client.web.app",
 		],
 		credentials: true,
+		optionsSuccessStatus:200
 	})
 );
 
@@ -56,31 +75,54 @@ async function run() {
 		const purchaseCollection = client
 			.db("globalpalate")
 			.collection("purchase");
+		const usersCollection = client
+			.db("globalpalate")
+			.collection("user");
+
+		// User Related Info:
+
+		app.get("/user", async(req,res)=>{
+			
+			const user = await usersCollection.find().toArray()
+			res.send(user)
+		})
+
+		app.post("/user", async(req,res)=>{
+			const user = req.body;
+			const result = await usersCollection.insertOne(user);
+			res.send(result);
+		})
 
 		app.get("/", (req, res) => {
 			res.send("Hello World!");
 		});
 
+		app.get("/food/:email", verifyToken, async (req, res) => {
+			const tokenEmail = req.user?.email;
+
+			const paramEmail = req.params.email;
+			console.log(tokenEmail, paramEmail);
+			if (tokenEmail !== paramEmail)
+				return res.status(403).send({ message: "Forbidden access" });
+			else {
+				try {
+					let query = { "add_by.email": paramEmail };
+					const foods = await foodsCollection.find(query).toArray();
+					res.send(foods);
+				} catch (error) {
+					console.error("Error searching foods:", error);
+					res.status(500).json({ error: "Internal server error" });
+				}
+			}
+		});
 		app.get("/foods", async (req, res) => {
 			try {
 				let query = {};
-				if (req.query?.email || req.query?.name) {
+				if (req.query?.name) {
 					query = {
-						$and: [
-							req.query.email
-								? { "add_by.email": req.query.email }
-								: {},
-							req.query.name
-								? {
-										name: {
-											$regex: new RegExp(
-												req.query.name,
-												"i"
-											),
-										},
-								  }
-								: {},
-						],
+						name: {
+							$regex: new RegExp(req.query.name, "i"),
+						},
 					};
 				}
 				const foods = await foodsCollection.find(query).toArray();
@@ -117,13 +159,13 @@ async function run() {
 			res.send(result);
 		});
 
-		app.patch("/foods/:id", async(req,res)=>{
+		app.patch("/foods/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
-			const count = {$inc:{purchaseCount:1}}
-			const result = await foodsCollection.updateOne(query,count)
-			res.send(result)
-		})
+			const count = { $inc: { purchaseCount: 1 } };
+			const result = await foodsCollection.updateOne(query, count);
+			res.send(result);
+		});
 
 		app.delete("/foods/:id", async (req, res) => {
 			const id = req.params.id;
@@ -146,19 +188,26 @@ async function run() {
 
 		// food Purchase
 
-		app.get("/purchase", async (req, res) => {
-			try {
-				let query = {};
-				if (req.query?.email) {
-					query = req.query.email
-						? { "buyer.email": req.query.email }
-						: {};
+		app.get("/purchase", verifyToken, async (req, res) => {
+			const tokenEmail = req.user?.email;
+			if (tokenEmail !== req.query?.email)
+				return res.status(403).send({ message: "Forbidden access" });
+			else {
+				try {
+					let query = {};
+					if (req.query?.email) {
+						query = req.query.email
+							? { "buyer.email": req.query.email }
+							: {};
+					}
+					const purchase = await purchaseCollection
+						.find(query)
+						.toArray();
+					res.send(purchase);
+				} catch (error) {
+					console.error("Error searching foods:", error);
+					res.status(500).json({ error: "Internal server error" });
 				}
-				const purchase = await purchaseCollection.find(query).toArray();
-				res.send(purchase);
-			} catch (error) {
-				console.error("Error searching foods:", error);
-				res.status(500).json({ error: "Internal server error" });
 			}
 		});
 
@@ -182,24 +231,28 @@ async function run() {
 			res.send(result);
 		});
 
-		// app.post("/jwt", async (req, res) => {
-		// 	const user = req.body;
-		// 	console.log("user for token", user);
-		// 	const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET);
+		// Authentication token
 
-		// 	res.cookie("token", token, cookieOptions).send({
-		// 		success: true,
-		// 	});
-		// });
+		app.post("/jwt", async (req, res) => {
+			const user = req.body;
 
-		//clearing Token
-		// app.post("/logout", async (req, res) => {
-		// 	const user = req.body;
-		// 	console.log("logging out", user);
-		// 	res.clearCookie("token", { ...cookieOptions, maxAge: 0 }).send({
-		// 		success: true,
-		// 	});
-		// });
+			const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+				expiresIn: "7d",
+			});
+
+			res.cookie("token", token, cookieOptions).send({
+				success: true,
+			});
+		});
+
+		// clearing Token
+		app.get("/logout", async (req, res) => {
+			const user = req.body;
+			res.clearCookie("token", { ...cookieOptions, maxAge: 0 }).send({
+				success: true,
+			});
+		});
+
 		app.listen(port, () => {
 			console.log(`this app listening on port ${port}`);
 		});
