@@ -52,6 +52,7 @@ async function run() {
 
 		const foodsCollection = client.db("globalpalate").collection("foods");
 		const feedbackCollection = client.db("globalpalate").collection("feedback");
+		const purchaseCollection = client.db("globalpalate").collection("purchase");
 
 		app.get("/", (req, res) => {
 			res.send("Hello World!");
@@ -131,6 +132,28 @@ async function run() {
 			const result = await feedbackCollection.insertOne(feedback)
 			res.send(result)
 		})
+
+		// food Purchase
+
+		app.get("/purchase/:id", async (req, res) => {
+			const id = req.params.id;
+			const query = { _id: new ObjectId(id) };
+			const purchase = await purchaseCollection.findOne(query);
+			res.send(purchase);
+		});
+
+		app.post("/purchase", async (req, res) => {
+			const purchase = req.body;
+			const result = await purchaseCollection.insertOne(purchase);
+			res.send(result);
+		});
+
+		app.delete("/purchase/:id", async (req, res) => {
+			const id = req.params.id;
+			const query = { _id: new ObjectId(id) };
+			const result = await purchaseCollection.deleteOne(query);
+			res.send(result);
+		});
 
 		// app.post("/jwt", async (req, res) => {
 		// 	const user = req.body;
