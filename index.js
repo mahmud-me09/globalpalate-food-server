@@ -8,7 +8,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 app.use(express.json());
 
-
 app.use(
 	cors({
 		origin: [
@@ -51,8 +50,12 @@ async function run() {
 		);
 
 		const foodsCollection = client.db("globalpalate").collection("foods");
-		const feedbackCollection = client.db("globalpalate").collection("feedback");
-		const purchaseCollection = client.db("globalpalate").collection("purchase");
+		const feedbackCollection = client
+			.db("globalpalate")
+			.collection("feedback");
+		const purchaseCollection = client
+			.db("globalpalate")
+			.collection("purchase");
 
 		app.get("/", (req, res) => {
 			res.send("Hello World!");
@@ -114,6 +117,14 @@ async function run() {
 			res.send(result);
 		});
 
+		app.patch("/foods/:id", async(req,res)=>{
+			const id = req.params.id;
+			const query = { _id: new ObjectId(id) };
+			const count = {$inc:{purchaseCount:1}}
+			const result = await foodsCollection.updateOne(query,count)
+			res.send(result)
+		})
+
 		app.delete("/foods/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
@@ -122,18 +133,34 @@ async function run() {
 		});
 
 		// galary-collection
-		app.get("/feedback",async(req,res)=>{
-			const feedback = await feedbackCollection.find().toArray()
-			res.send(feedback)
-		})
+		app.get("/feedback", async (req, res) => {
+			const feedback = await feedbackCollection.find().toArray();
+			res.send(feedback);
+		});
 
-		app.post("/feedback",async(req,res)=>{
-			const feedback = req.body
-			const result = await feedbackCollection.insertOne(feedback)
-			res.send(result)
-		})
+		app.post("/feedback", async (req, res) => {
+			const feedback = req.body;
+			const result = await feedbackCollection.insertOne(feedback);
+			res.send(result);
+		});
 
 		// food Purchase
+
+		app.get("/purchase", async (req, res) => {
+			try {
+				let query = {};
+				if (req.query?.email) {
+					query = req.query.email
+						? { "buyer.email": req.query.email }
+						: {};
+				}
+				const purchase = await purchaseCollection.find(query).toArray();
+				res.send(purchase);
+			} catch (error) {
+				console.error("Error searching foods:", error);
+				res.status(500).json({ error: "Internal server error" });
+			}
+		});
 
 		app.get("/purchase/:id", async (req, res) => {
 			const id = req.params.id;
