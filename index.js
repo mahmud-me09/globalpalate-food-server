@@ -86,8 +86,8 @@ async function run() {
 		// User Related Info:
 
 		app.get("/user", async(req,res)=>{
-			
-			const user = await usersCollection.find().toArray()
+			const query = {email: req.query?.email}
+			const user = await usersCollection.findOne(query)
 			res.send(user)
 		})
 
