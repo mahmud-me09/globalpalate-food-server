@@ -253,7 +253,7 @@ async function run() {
 		});
 
 		// clearing Token
-		app.get("/logout", async (req, res) => {
+		app.post("/logout", async (req, res) => {
 			const user = req.body;
 			res.clearCookie("token", { ...cookieOptions, maxAge: 0 }).send({
 				success: true,
