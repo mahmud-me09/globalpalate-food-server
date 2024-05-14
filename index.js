@@ -79,6 +79,10 @@ async function run() {
 			.db("globalpalate")
 			.collection("user");
 
+		app.get("/", (req, res) => {
+			res.send("Hello World!");
+		});
+
 		// User Related Info:
 
 		app.get("/user", async(req,res)=>{
@@ -93,9 +97,12 @@ async function run() {
 			res.send(result);
 		})
 
-		app.get("/", (req, res) => {
-			res.send("Hello World!");
-		});
+		app.delete("/user", async(req,res)=>{
+			const result = await usersCollection.deleteMany();
+			res.send(result)
+		})
+
+		
 
 		app.get("/food/:email", verifyToken, async (req, res) => {
 			const tokenEmail = req.user?.email;
