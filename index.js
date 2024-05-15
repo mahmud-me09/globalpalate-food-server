@@ -166,10 +166,10 @@ async function run() {
 			res.send(result);
 		});
 
-		app.patch("/foods/:id",verifyToken, async (req, res) => {
+		app.patch("/foods/:id", async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
-			const count = { $inc: { purchaseCount: 1 } };
+			const count = req.body;
 			const result = await foodsCollection.updateOne(query, count);
 			res.send(result);
 		});
