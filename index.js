@@ -147,13 +147,13 @@ async function run() {
 			res.send(food);
 		});
 
-		app.post("/foods", async (req, res) => {
+		app.post("/foods", verifyToken, async (req, res) => {
 			const food = req.body;
 			const result = await foodsCollection.insertOne(food);
 			res.send(result);
 		});
 
-		app.put("/foods/:id", async (req, res) => {
+		app.put("/foods/:id", verifyToken, async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
 			const updatedFoodData = { $set: req.body };
@@ -166,7 +166,7 @@ async function run() {
 			res.send(result);
 		});
 
-		app.patch("/foods/:id", async (req, res) => {
+		app.patch("/foods/:id",verifyToken, async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
 			const count = { $inc: { purchaseCount: 1 } };
@@ -174,7 +174,7 @@ async function run() {
 			res.send(result);
 		});
 
-		app.delete("/foods/:id", async (req, res) => {
+		app.delete("/foods/:id", verifyToken, async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
 			const result = await foodsCollection.deleteOne(query);
@@ -218,20 +218,20 @@ async function run() {
 			}
 		});
 
-		app.get("/purchase/:id", async (req, res) => {
+		app.get("/purchase/:id", verifyToken, async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
 			const purchase = await purchaseCollection.findOne(query);
 			res.send(purchase);
 		});
 
-		app.post("/purchase", async (req, res) => {
+		app.post("/purchase", verifyToken, async (req, res) => {
 			const purchase = req.body;
 			const result = await purchaseCollection.insertOne(purchase);
 			res.send(result);
 		});
 
-		app.delete("/purchase/:id", async (req, res) => {
+		app.delete("/purchase/:id",verifyToken, async (req, res) => {
 			const id = req.params.id;
 			const query = { _id: new ObjectId(id) };
 			const result = await purchaseCollection.deleteOne(query);
